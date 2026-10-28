@@ -1,0 +1,43 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# Model checkpoints and large activation caches
+checkpoints/*.pt
+activations_cache/*.pt
+*.safetensors
+*.bin
+
+# Preserve directory structures
+!checkpoints/.gitkeep
+!activations_cache/.gitkeep
+
+# IDE and OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+notebooks/activations_cache/block6_activations.pt
+notebooks/checkpoints/sae_lambda_high.pt
+notebooks/checkpoints/sae_lambda_low.pt
+notebooks/figures/patching_effects.png
+notebooks/figures/sae_tradeoff_comparison.png
+doc/Sparse Autoencoders Ground-Up Study Notes (GPT-2 S 40499562f47a81018d6fc075d83dde62.md

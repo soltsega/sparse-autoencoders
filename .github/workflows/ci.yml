@@ -1,0 +1,71 @@
+name: CI - Notebook Validation & Quality Assurance
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install nbformat flake8
+
+    - name: Validate Notebook Integrity & JSON Structure
+      run: |
+        python -c "
+        import nbformat
+        import glob
+        import sys
+
+        notebooks = glob.glob('notebooks/*.ipynb')
+        if not notebooks:
+            print('Error: No notebook found in notebooks/')
+            sys.exit(1)
+
+        for nb_path in notebooks:
+            print(f'Validating structure of {nb_path}...')
+            with open(nb_path, 'r', encoding='utf-8') as f:
+                nb = nbformat.read(f, as_version=4)
+            nbformat.validate(nb)
+            print(f'✓ {nb_path} passed nbformat validation ({len(nb.cells)} cells).')
+        "
+
+    - name: Syntax Check Code Cells
+      run: |
+        python -c "
+        import nbformat
+        import glob
+        import ast
+
+        for nb_path in glob.glob('notebooks/*.ipynb'):
+            with open(nb_path, 'r', encoding='utf-8') as f:
+                nb = nbformat.read(f, as_version=4)
+            for idx, cell in enumerate(nb.cells):
+                if cell.cell_type == 'code':
+                    code = ''.join([line for line in cell.source.splitlines(True) if not line.strip().startswith('!') and not line.strip().startswith('%')])
+                    try:
+                        ast.parse(code)
+                    except SyntaxError as e:
+                        print(f'Syntax error in {nb_path} cell {idx}: {e}')
+                        sys.exit(1)
+        print('✓ All notebook code cells passed Python syntax validation.')
+        "
