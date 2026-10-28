@@ -64,33 +64,38 @@ $$\hat{h} = W_{\text{dec}} f(h) + b_{\text{dec}}$$
 
 ---
 
-## 2. Repository Structure
+## 2. Key Experiments & Empirical Results
 
-```
-sparse-autoencoders/
-├── .github/
-│   └── workflows/
-│       └── ci.yml                 # Automated CI: Notebook integrity & AST syntax validation
-├── activations_cache/             # Serialized residual-stream activation tensors
-│   └── .gitkeep
-├── checkpoints/                   # Trained SAE checkpoints (.pt)
-│   └── .gitkeep
-├── doc/
-│   ├── instruction.md             # Formal assignment brief & requirements
-│   ├── reading_material.md        # Mechanistic interpretability foundations
-│   └── Sparse Autoencoders...md   # Comprehensive ground-up study notes
-├── figures/                       # High-resolution generated publication figures
-│   ├── patching_effects.png       # Layer-by-layer Denoising & Noising curves across groups
-│   └── sae_tradeoff_comparison.png# Dual learning curves & rate-distortion Pareto frontier
-├── notebooks/
-│   └── sparse_autoencoders_and_activation_patching.ipynb  # MASTER SELF-CONTAINED NOTEBOOK
-├── report/
-│   └── research_report.md         # Formal 860-word research report (Part 13 blueprint)
-├── .gitignore                     # Git tracking rules
-├── pyproject.toml                 # Packaging & project metadata configuration
-├── requirements.txt               # Locked dependencies
-└── README.md                      # Comprehensive repository documentation
-```
+### 2.1 Activation Patching: Standard vs. Challenging IOI Pairs
+
+Evaluated across **32 fixed pairs** (16 Standard BABA/ABBA templates, 16 Challenging pairs with relative clauses and distractors):
+- **Pre-Intervention Checks:** 100% passed token sequence length parity and single-token name encoding.
+- **Baseline Measurements:**
+  - *Standard Group:* Clean Diff $= +3.25 \pm 0.62$, Corrupted Diff $= -3.18 \pm 0.58$ (Gap: $6.43$).
+  - *Challenging Group:* Clean Diff $= +2.84 \pm 0.74$, Corrupted Diff $= -2.76 \pm 0.69$ (Gap: $5.60$).
+- **Controls at Block 6:**
+  - *Identity Control Drift:* $0.0000$ (verified zero disruption).
+  - *Comparison Control:* Unrelated activation injection destroyed the circuit (clean diff dropped by $> 4.1$ logits).
+- **Layer Sweep Peak:** Denoising sufficiency peaks sharply at **Layers 7–8** ($88.42\%$ on Standard pairs, $79.15\%$ on Challenging pairs), confirming that the mid-to-late residual stream carries the indirect object signal.
+
+![Activation Patching Layer Sweep](figures/patching_effects.png)
+
+### 2.2 Sparse Autoencoder: Rate-Distortion Frontier
+
+Trained on Block 6 post-residual activations ($d=768 \to n=1024$) with tied initialization:
+
+| Model Configuration | Sparsity Penalty ($\lambda$) | Held-Out MSE | Mean Baseline MSE | FVU | Mean $L_0$ (Act/tok) | Dead Latents (%) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Trivial Baseline** | — | — | 0.4788 | 1.000 | — | — |
+| **Run A: Low $\lambda$** | $1 \times 10^{-3}$ | **0.0452** | 0.4788 | **0.0945** ($R^2 = 90.6\%$) | 143.3 | **0.0%** |
+| **Run B: High $\lambda$** | $1 \times 10^{-1}$ | 0.4850 | 0.4788 | 1.0131 | **0.3** | 82.5% |
+
+![SAE Trade-Off Comparison](figures/sae_tradeoff_comparison.png)
+
+- **Position-0 Outlier:** Token position 0 norm is $3066.04$ vs $93.18$ across other positions ($32.91\times$ larger). Strictly excluding position 0 is necessary to preserve SAE capacity.
+- **Trade-off Insights:** Increasing $\lambda$ from $10^{-3}$ to $10^{-1}$ creates an extreme sparsity regime ($L_0$ drops from 143.3 to 0.3), demonstrating the sharp Pareto trade-off between reconstruction fidelity and sparsity.
+- **Dead Latents:** In Run B, severe $L_1$ penalty causes $82.5\%$ of latents to die (zero activations across entire validation set) due to gradient starvation. Run A maintains $100\%$ latent vitality (0 dead latents).
+- **Feature Interpretation:** Contrastive latent analysis successfully identified specialized directions, such as latents selectively firing on proper names and semantic role boundaries.
 
 ---
 
@@ -127,42 +132,11 @@ The notebook executes end-to-end on standard CPU in under 5 minutes, adhering st
 
 ---
 
-## 4. Key Experiments & Empirical Results
-
-### 4.1 Activation Patching: Standard vs. Challenging IOI Pairs
-
-Evaluated across **32 fixed pairs** (16 Standard BABA/ABBA templates, 16 Challenging pairs with relative clauses and distractors):
-- **Pre-Intervention Checks:** 100% passed token sequence length parity and single-token name encoding.
-- **Baseline Measurements:**
-  - *Standard Group:* Clean Diff $= +3.25 \pm 0.62$, Corrupted Diff $= -3.18 \pm 0.58$ (Gap: $6.43$).
-  - *Challenging Group:* Clean Diff $= +2.84 \pm 0.74$, Corrupted Diff $= -2.76 \pm 0.69$ (Gap: $5.60$).
-- **Controls at Block 6:**
-  - *Identity Control Drift:* $0.0000$ (verified zero disruption).
-  - *Comparison Control:* Unrelated activation injection destroyed the circuit (clean diff dropped by $> 4.1$ logits).
-- **Layer Sweep Peak:** Denoising sufficiency peaks sharply at **Layers 7–8** ($88.42\%$ on Standard pairs, $79.15\%$ on Challenging pairs), confirming that the mid-to-late residual stream carries the indirect object signal.
-
-### 4.2 Sparse Autoencoder: Rate-Distortion Frontier
-
-Trained on Block 6 post-residual activations ($d=768 \to n=1024$) with tied initialization:
-
-| Model Configuration | Sparsity Penalty ($\lambda$) | Held-Out MSE | Mean Baseline MSE | FVU | Mean $L_0$ (Act/tok) | Dead Latents (%) |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Trivial Baseline** | — | — | 0.4788 | 1.000 | — | — |
-| **Run A: Low $\lambda$** | $1 \times 10^{-3}$ | **0.0452** | 0.4788 | **0.0945** ($R^2 = 90.6\%$) | 143.3 | **0.0%** |
-| **Run B: High $\lambda$** | $1 \times 10^{-1}$ | 0.4850 | 0.4788 | 1.0131 | **0.3** | 82.5% |
-
-- **Position-0 Outlier:** Token position 0 norm is $3066.04$ vs $93.18$ across other positions ($32.91\times$ larger). Strictly excluding position 0 is necessary to preserve SAE capacity.
-- **Trade-off Insights:** Increasing $\lambda$ from $10^{-3}$ to $10^{-1}$ creates an extreme sparsity regime ($L_0$ drops from 143.3 to 0.3), demonstrating the sharp Pareto trade-off between reconstruction fidelity and sparsity.
-- **Dead Latents:** In Run B, severe $L_1$ penalty causes $82.5\%$ of latents to die (zero activations across entire validation set) due to gradient starvation. Run A maintains $100\%$ latent vitality (0 dead latents).
-- **Feature Interpretation:** Contrastive latent analysis successfully identified specialized directions, such as latents selectively firing on proper names and semantic role boundaries.
-
----
-
-## 5. Continuous Integration & Quality Assurance
+## 4. Continuous Integration & Quality Assurance
 
 This repository includes automated GitHub Actions CI in [`.github/workflows/ci.yml`](file:///.github/workflows/ci.yml) validating:
 - Strict JSON structure validation via `nbformat`.
-- Abstract Syntax Tree (AST) compilation of all 17 executable code cells with 0 errors.
+- Abstract Syntax Tree (AST) compilation of all executable code cells with 0 errors.
 
 To run the local validation suite:
 ```bash
@@ -171,7 +145,7 @@ python -c "import nbformat, ast; nb = nbformat.read('notebooks/sparse_autoencode
 
 ---
 
-## 6. References & Literature
+## 5. References & Literature
 
 1. **Wang et al. (2022)** — *Interpretability in the Wild: a Circuit for Indirect Object Identification in GPT-2 small.* [arXiv:2211.00593](https://arxiv.org/abs/2211.00593).
 2. **Bricken et al. / Anthropic (2023)** — *Towards Monosemanticity: Decomposing Language Models With Dictionary Learning.* Transformer Circuits Thread.
@@ -180,6 +154,6 @@ python -c "import nbformat, ast; nb = nbformat.read('notebooks/sparse_autoencode
 
 ---
 
-## 7. License
+## 6. License
 
 This project is licensed under the [MIT License](LICENSE).
