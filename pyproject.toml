@@ -21,6 +21,7 @@ dependencies = [
     "tqdm>=4.65.0",
     "nbformat>=5.9.0",
     "ipykernel>=6.20.0",
+    "torch>=2.1.0+cpu -f https://download.pytorch.org/whl/cpu",
 ]
 
 [project.optional-dependencies]
