@@ -84,6 +84,8 @@ sparse-autoencoders/
 │   └── sae_tradeoff_comparison.png# Dual learning curves & rate-distortion Pareto frontier
 ├── notebooks/
 │   └── sparse_autoencoders_and_activation_patching.ipynb  # MASTER SELF-CONTAINED NOTEBOOK
+├── report/
+│   └── research_report.md         # Formal 860-word research report (Part 13 blueprint)
 ├── .gitignore                     # Git tracking rules
 ├── pyproject.toml                 # Packaging & project metadata configuration
 ├── requirements.txt               # Locked dependencies
@@ -137,7 +139,7 @@ Evaluated across **32 fixed pairs** (16 Standard BABA/ABBA templates, 16 Challen
 - **Controls at Block 6:**
   - *Identity Control Drift:* $0.0000$ (verified zero disruption).
   - *Comparison Control:* Unrelated activation injection destroyed the circuit (clean diff dropped by $> 4.1$ logits).
-- **Layer Sweep Peak:** Denoising sufficiency peaks sharply at **Layers 7–8** ($> 85\%$ normalized restoration), confirming that the mid-to-late residual stream carries the indirect object signal.
+- **Layer Sweep Peak:** Denoising sufficiency peaks sharply at **Layers 7–8** ($88.42\%$ on Standard pairs, $79.15\%$ on Challenging pairs), confirming that the mid-to-late residual stream carries the indirect object signal.
 
 ### 4.2 Sparse Autoencoder: Rate-Distortion Frontier
 
@@ -145,13 +147,14 @@ Trained on Block 6 post-residual activations ($d=768 \to n=1024$) with tied init
 
 | Model Configuration | Sparsity Penalty ($\lambda$) | Held-Out MSE | Mean Baseline MSE | FVU | Mean $L_0$ (Act/tok) | Dead Latents (%) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Trivial Baseline** | — | — | 0.912 | 1.000 | — | — |
-| **Run A: Low $\lambda$** | $1 \times 10^{-3}$ | **0.048** | 0.912 | **0.052** | 142.6 | **0.0%** |
-| **Run B: High $\lambda$** | $1 \times 10^{-1}$ | 0.162 | 0.912 | 0.178 | **18.4** | 24.8% |
+| **Trivial Baseline** | — | — | 0.4788 | 1.000 | — | — |
+| **Run A: Low $\lambda$** | $1 \times 10^{-3}$ | **0.0452** | 0.4788 | **0.0945** ($R^2 = 90.6\%$) | 143.3 | **0.0%** |
+| **Run B: High $\lambda$** | $1 \times 10^{-1}$ | 0.4850 | 0.4788 | 1.0131 | **0.3** | 82.5% |
 
-- **Trade-off Insights:** Increasing $\lambda$ by $100\times$ reduces active density ($L_0$) by $\approx 87\%$, with a modest rise in MSE.
-- **Dead Latents:** In short optimization runs, strong $L_1$ penalty causes inactive directions to freeze ($24.8\%$ dead latents), reflecting the trade-off between capacity utilization and extreme sparsity.
-- **Shrinkage:** $L_1$ regularization introduces systematic downward bias on non-zero latent magnitudes.
+- **Position-0 Outlier:** Token position 0 norm is $3066.04$ vs $93.18$ across other positions ($32.91\times$ larger). Strictly excluding position 0 is necessary to preserve SAE capacity.
+- **Trade-off Insights:** Increasing $\lambda$ from $10^{-3}$ to $10^{-1}$ creates an extreme sparsity regime ($L_0$ drops from 143.3 to 0.3), demonstrating the sharp Pareto trade-off between reconstruction fidelity and sparsity.
+- **Dead Latents:** In Run B, severe $L_1$ penalty causes $82.5\%$ of latents to die (zero activations across entire validation set) due to gradient starvation. Run A maintains $100\%$ latent vitality (0 dead latents).
+- **Feature Interpretation:** Contrastive latent analysis successfully identified specialized directions, such as latents selectively firing on proper names and semantic role boundaries.
 
 ---
 
